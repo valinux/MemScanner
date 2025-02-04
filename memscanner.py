@@ -67,7 +67,6 @@ def initial_scan(pid: str, search_val: int, regions: List[Tuple[int, int, str]])
                         absolute_addr = current_pos + idx
                         matches.append(absolute_addr)
                         offset = idx + 1  # Allow overlapping matches
-
                     offset_in_region += read_size
     except Exception as e:
         print(f"Error accessing process memory: {e}")
@@ -137,7 +136,9 @@ def modify_memory(pid: str, addresses: List[int], new_val: int) -> int:
     return success_count
 
 def freeze_address(pid: str, addr: int, new_bytes: bytes, interval: float, stop_event: threading.Event):
-    """Continuously writes to memory until stopped."""
+    """
+    Continuously writes to a memory address until stop_event is set.
+    """
     mem_file = f"/proc/{pid}/mem"
     while not stop_event.is_set():
         try:
@@ -149,7 +150,10 @@ def freeze_address(pid: str, addr: int, new_bytes: bytes, interval: float, stop_
         time.sleep(interval)
 
 def freeze_memory(pid: str, addresses: List[int], new_val: int):
-    """Manages freeze threads with proper cleanup."""
+    """
+    Starts freeze threads in the background.
+    Returns a tuple (stop_event, threads) so that the freezing can be stopped if needed.
+    """
     new_bytes = struct.pack("i", new_val)
     stop_event = threading.Event()
     threads = []
@@ -162,20 +166,13 @@ def freeze_memory(pid: str, addresses: List[int], new_val: int):
         )
         t.start()
         threads.append(t)
-
-    print(f"Freezing {len(addresses)} addresses. Press Ctrl+C to stop.")
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("\nStopping freeze...")
-        stop_event.set()
-        for t in threads:
-            t.join(timeout=1)
-        print("Freezing stopped.")
+    print(f"Started freezing {len(addresses)} addresses in the background.")
+    return stop_event, threads
 
 def validate_integer(value: str) -> int:
-    """Ensures input fits in 32-bit signed integer range."""
+    """
+    Ensures input fits in 32-bit signed integer range.
+    """
     try:
         val = int(value)
         if not (-2**31 <= val < 2**31):
@@ -200,29 +197,32 @@ def main():
     candidates = []
     regions = []
 
+    # This list will store active freeze tasks as tuples (stop_event, threads)
+    freeze_tasks = []
+
     def refresh_regions():
-        """Helper to reload memory regions with existence check"""
+        """Helper to reload memory regions with existence check."""
         if not os.path.exists(f"/proc/{pid}"):
             print(f"Process {pid} no longer exists")
             sys.exit(1)
         return parse_maps(pid)
 
     def new_search():
-        """Handle new search workflow"""
+        """Handle new search workflow."""
         nonlocal candidates, regions, initial_val
         try:
             new_val = validate_integer(input("New initial search value: "))
         except KeyboardInterrupt:
             print("\nCancelled new search")
             return
-        
+
         print("\nStarting fresh search...")
         regions = refresh_regions()
         initial_val = new_val
         candidates = initial_scan(pid, initial_val, regions)
         print(f"Found {len(candidates)} new candidates")
 
-    # Initial search
+    # Perform the initial scan.
     regions = refresh_regions()
     candidates = initial_scan(pid, initial_val, regions)
     print(f"Initial scan found {len(candidates)} candidates")
@@ -251,14 +251,21 @@ def main():
             print(f"Successfully modified {modified} locations")
         elif choice == 'f' and candidates:
             new_val = validate_integer(input("Value to freeze: "))
-            freeze_memory(pid, candidates, new_val)
+            # Start freezing in the background without blocking the interactive loop.
+            task = freeze_memory(pid, candidates, new_val)
+            freeze_tasks.append(task)
         elif choice == 'q':
-            print("Exiting")
+            print("Exiting...")
+            # Optionally, stop any active freeze tasks before exiting.
+            for stop_event, threads in freeze_tasks:
+                stop_event.set()
+                for t in threads:
+                    t.join(timeout=1)
             sys.exit(0)
         else:
             print("Invalid choice or no candidates for that action")
 
-        # Auto-refresh regions after significant actions
+        # Auto-refresh regions after significant actions.
         if choice in ['m', 'f'] and candidates:
             regions = refresh_regions()
 
