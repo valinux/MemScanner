@@ -5,6 +5,9 @@
 > **Disclaimer:**  
 > **Use responsibly and only on processes you own or have explicit permission to modify. Unauthorized memory manipulation may violate laws or system policies.**
 
+Click on the youtube video below at https://youtu.be/9UWhuwYpecw to watch how to install and run the program.
+[![Watch the video](https://img.youtube.com/vi/9UWhuwYpecw/0.jpg)](https://youtu.be/9UWhuwYpecw)
+
 ## Features
 
 - **Initial Scan:**  
