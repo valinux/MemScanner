@@ -1,6 +1,6 @@
 # MemScanner
 
-**MemScanner** is a Python-based memory scanning tool for Linux systems. It allows you to search a running process's memory for a specific 32-bit integer value, refine the search results, modify the found values, and even "freeze" them by continuously writing a new value. This tool leverages the Linux `/proc` filesystem to inspect and manipulate process memory.
+**MemScanner** is a Python-based memory scanning tool for Linux systems created by Renan Rocha. It allows you to search a running process's memory for a specific 32-bit integer value, refine the search results, modify the found values, and even "freeze" them by continuously writing a new value. This tool leverages the Linux `/proc` filesystem to inspect and manipulate process memory.
 
 > **Disclaimer:**  
 > **Use responsibly and only on processes you own or have explicit permission to modify. Unauthorized memory manipulation may violate laws or system policies.**
